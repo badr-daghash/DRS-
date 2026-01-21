@@ -21,9 +21,44 @@ from api.serializers import (
 )
 
 
+# class ProductListAPIView(generics.ListCreateAPIView):
+#     # queryset = Product.objects.all()
+#     queryset = Product.objects.order_by("pk")  # for paginatiion yield warning
+#     serializer_class = ProductSerializer
+#     filterset_class = ProductFilter
+#     filter_backends = [
+#         DjangoFilterBackend,
+#         filters.SearchFilter,
+#         filters.OrderingFilter,
+#         InStockFilterBackend,
+#     ]
+#     search_fields = ["name", "description"]
+#     ordering_fields = ["name", "price", "stock"]
+#     # pagination_class = PageNumberPagination
+#     # pagination_class.page_size = 2
+#     # pagination_class.page_query_param = 'pagenum'
+#     # pagination_class.page_size_query_param = 'size'
+#     # pagination_class.max_page_size = 4
+#     pagination_class = LimitOffsetPagination
+
+#     # @method_decorator(cache_page(60 * 5 ,key_prefix='product_list'))
+#     # def list(self,request , *args, **kwargs):
+#     #     return super().list(request,*args,**kwargs)
+
+#     # def get_queryset(self):
+#     #     import time
+#     #     time.sleep(2)
+#     #     return super().get_queryset()
+
+#     def get_permissions(self):
+#         self.permission_classes = [AllowAny]
+#         if self.request.method == "POST":
+#             self.permission_classes = [IsAdminUser]
+#         return super().get_permissions()
+
+## Load test
+@method_decorator(cache_page(60*5) , name='dispatch')
 class ProductListAPIView(generics.ListCreateAPIView):
-    # queryset = Product.objects.all()
-    queryset = Product.objects.order_by("pk")  # for paginatiion yield warning
     serializer_class = ProductSerializer
     filterset_class = ProductFilter
     filter_backends = [
@@ -34,21 +69,12 @@ class ProductListAPIView(generics.ListCreateAPIView):
     ]
     search_fields = ["name", "description"]
     ordering_fields = ["name", "price", "stock"]
-    # pagination_class = PageNumberPagination
-    # pagination_class.page_size = 2
-    # pagination_class.page_query_param = 'pagenum'
-    # pagination_class.page_size_query_param = 'size'
-    # pagination_class.max_page_size = 4
+
     pagination_class = LimitOffsetPagination
 
-    # @method_decorator(cache_page(60 * 15 ,key_prefix='product_list'))
-    # def list(self,request , *args, **kwargs):
-    #     return super().list(request,*args,**kwargs)
-
-    # def get_queryset(self):
-    #     import time
-    #     time.sleep(2)
-    #     return super().get_queryset()
+    def get_queryset(self):
+        qs = Product.objects.only("id", "name", "price", "stock","description")
+        return qs.order_by("pk")
 
     def get_permissions(self):
         self.permission_classes = [AllowAny]
@@ -76,9 +102,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend]
-    
+
     def perform_create(self, serializer):
-        serializer.save(user = self.request.user)
+        serializer.save(user=self.request.user)
 
     def get_serializer_class(self):
         if self.action == "create":
