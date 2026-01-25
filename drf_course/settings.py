@@ -128,18 +128,18 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 5,
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.ScopedRateThrottle",
-        "api.throttler.BurstRateThrottle",
-        "api.throttler.SustainedRateThrottle",
-    ],
-     'DEFAULT_THROTTLE_RATES': {
-        'anon': '2/minute',
-        'burst': '10/minute',
-        'sustained':'15/hour',
-        'orders':'1/minute'
-    }
+    # "DEFAULT_THROTTLE_CLASSES": [
+    #     "rest_framework.throttling.AnonRateThrottle",
+    #     "rest_framework.throttling.ScopedRateThrottle",
+    #     "api.throttler.BurstRateThrottle",
+    #     "api.throttler.SustainedRateThrottle",
+    # ],
+    #  'DEFAULT_THROTTLE_RATES': {
+    #     'anon': '2/minute',
+    #     'burst': '10/minute',
+    #     'sustained':'15/hour',
+    #     'orders':'1/minute'
+    # }
 }
 
 SPECTACULAR_SETTINGS = {

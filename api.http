@@ -48,7 +48,7 @@ Content-Type: application/json
 ### 
 POST http://localhost:8000/order/ HTTP/1.1  
 Content-Type: application/json 
-Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY4OTQ0NDk3LCJpYXQiOjE3Njg5NDQxOTcsImp0aSI6ImVmYTNlOGJhNmJhZDRmNTJhZTgxYTFhNjMzMjFjNmM1IiwidXNlcl9pZCI6IjEifQ.I_dUFg0lMld5VZI4OairZAcU49dMWi2q5sr6_Rq5ASo
+Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5MzMyMDIwLCJpYXQiOjE3NjkzMzE3MjAsImp0aSI6ImRkZTMxY2IyZjUxNDQzODc5NWExOWFmMGNhZGFjY2E3IiwidXNlcl9pZCI6IjEifQ.NTiwPunM7I8lMedRqp-hPYz8S8_5yz0j9cYbVCp1ey4
 
 {
    "status":"Pending" , 
