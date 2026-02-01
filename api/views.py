@@ -18,7 +18,9 @@ from api.serializers import (
     ProductInfoSerializer,
     ProductSerializer,
     OrderCreateSerializer,
+    OrderListSerializer
 )
+from django.db.models import F, Sum
 
 
 # class ProductListAPIView(generics.ListCreateAPIView):
@@ -93,43 +95,69 @@ class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductSerializer
     lookup_url_kwarg = "product_id"
 
+# class OrderViewSet(viewsets.ModelViewSet):
+#     # throttle_scope  = 'orders'
+#     queryset = Order.objects.prefetch_related("items__product")
+#     # OrderCreateSerializer
+#     serializer_class = OrderSerializer
+#     permission_classes = [IsAuthenticated]
+#     filterset_class = OrderFilter
+#     filter_backends = [DjangoFilterBackend]
+
+#     def perform_create(self, serializer):
+#         serializer.save(user=self.request.user)
+
+#     def get_serializer_class(self):
+#         if self.action == "create":
+#             return OrderCreateSerializer
+#         return super().get_serializer_class()
+
+#     # 1
+#     def get_queryset(self):
+#         qs = super().get_queryset()
+#         if not self.request.user.is_staff:
+#             qs = qs.filter(user=self.request.user)
+
+#         return qs
+
+#     # # 2
+#     # @action(
+#     #     detail=False,
+#     #     methods=["GET"],
+#     #     url_path="user-orders",
+#     #     # permission_classes=[IsAuthenticated],
+#     # )
+#     # def user_orders(self, request):
+#     #     orders = self.get_queryset().filter(user=request.user)
+#     #     serializer = self.get_serializer(orders, many=True)
+#     #     return Response(serializer.data)
 
 class OrderViewSet(viewsets.ModelViewSet):
-    # throttle_scope  = 'orders'
     queryset = Order.objects.prefetch_related("items__product")
-    # OrderCreateSerializer
-    serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return OrderCreateSerializer
-        return super().get_serializer_class()
-
-    # 1
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Order.objects.prefetch_related("items__product").annotate(
+            annotated_total=Sum(F("items__quantity") * F("items__product__price"))
+        )
+
         if not self.request.user.is_staff:
             qs = qs.filter(user=self.request.user)
 
         return qs
 
-    # # 2
-    # @action(
-    #     detail=False,
-    #     methods=["GET"],
-    #     url_path="user-orders",
-    #     # permission_classes=[IsAuthenticated],
-    # )
-    # def user_orders(self, request):
-    #     orders = self.get_queryset().filter(user=request.user)
-    #     serializer = self.get_serializer(orders, many=True)
-    #     return Response(serializer.data)
+    def get_serializer_class(self):
+
+        if self.action == "create":
+            return OrderCreateSerializer
+        elif self.action == "list":
+            return OrderListSerializer  
+        return OrderSerializer  
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 # class OrderListAPIView(generics.ListCreateAPIView):

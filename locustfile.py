@@ -5,14 +5,24 @@ class DjangoUser(HttpUser):
     host = "http://127.0.0.1:8000"
     wait_time = between(1, 3)
 
-    product_ids = list(range(1, 11001))  
+    def on_start(self):
 
-    @task(3)
-    def list_products(self):
-        self.client.get("/products/")
+        response = self.client.post("/api/token/", json={
+            "username": "john-doe",
+            "password": "test"
+        })
+        self.token = response.json()["access"]
 
-    @task(1)
-    def get_product(self):
-        product_id = random.choice(self.product_ids)
-        self.client.get(f"/products/{product_id}/")
+    @task
+    def create_order(self):
+        # generate 1–5 random products for each order
+        items = [
+            {"product": random.randint(1, 1000), "quantity": random.randint(1, 5)}
+            for _ in range(random.randint(1, 5))
+        ]
 
+        self.client.post(
+            "/order/",
+            json={ "status": "Pending",  "items": items},
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
