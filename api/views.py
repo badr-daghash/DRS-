@@ -1,4 +1,4 @@
-from django.db.models import Max
+from django.db.models import Max, Q, F, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.http import JsonResponse
@@ -9,7 +9,8 @@ from rest_framework.decorators import api_view
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
+
+# from rest_framework.views import APIView
 from rest_framework.decorators import action
 from api.filters import InStockFilterBackend, ProductFilter, OrderFilter
 from api.models import Order, OrderItem, Product
@@ -18,9 +19,151 @@ from api.serializers import (
     ProductInfoSerializer,
     ProductSerializer,
     OrderCreateSerializer,
-    OrderListSerializer
+    OrderListSerializer,
 )
+from rest_framework.exceptions import PermissionDenied
+
 from django.db.models import F, Sum
+from adrf.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from asgiref.sync import sync_to_async
+from adrf.viewsets import ModelViewSet
+from adrf.views import APIView
+from rest_framework.filters import SearchFilter, OrderingFilter
+
+
+
+# @method_decorator(cache_page(60 * 5), name="dispatch")
+class ProductAsyncAPIView(ListCreateAPIView):
+    serializer_class = ProductSerializer
+    pagination_class = LimitOffsetPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+
+    search_fields = ["name", "description"]
+    ordering_fields = ["name", "price", "stock"]
+
+    def get_queryset(self):
+        return Product.objects.only("id", "name", "price", "stock", "description")
+
+    async def perform_acreate(self, serializer):
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can create products.")
+        await sync_to_async(serializer.save)()
+
+
+class ProductDetailAPIView(RetrieveUpdateDestroyAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_url_kwarg = "product_id"
+
+    async def perform_aupdate(self, serializer):
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can update products.")
+        await sync_to_async(serializer.save)()
+
+    async def perform_apartial_update(self, serializer):
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can update products.")
+        await sync_to_async(serializer.save)()
+
+    async def perform_adestroy(self, instance):
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can delete products.")
+        await sync_to_async(instance.delete)()
+
+
+class OrderAsyncViewSet(ModelViewSet):
+    queryset = Order.objects.prefetch_related("items__product")
+    permission_classes = [IsAuthenticated]
+    filterset_class = OrderFilter
+    filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        qs = Order.objects.prefetch_related("items__product").annotate(
+            annotated_total=Sum(F("items__quantity") * F("items__product__price"))
+        )
+
+        if not self.request.user.is_staff:
+            qs = qs.filter(user=self.request.user)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return OrderCreateSerializer
+
+        elif self.action == "list":
+            return OrderListSerializer
+
+        return OrderSerializer
+
+    async def perform_acreate(self, serializer):
+        await sync_to_async(serializer.save)(user=self.request.user)
+
+    async def perform_aupdate(self, serializer):
+        await sync_to_async(serializer.save)()
+
+    async def perform_apartial_update(self, serializer):
+        await sync_to_async(serializer.save)()
+
+    async def perform_adestroy(self, instance):
+        await sync_to_async(instance.delete)()
+
+class UserOrderListAPIView(generics.ListCreateAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Order.objects.prefetch_related("items__product").filter(
+            user=self.request.user
+        )
+    
+    async def perform_create(self,serializer): 
+        await  sync_to_async(serializer.save)(user=self.request.user)
+        
+        
+
+# class ProductInfoAPIView(APIView):
+#     async def get(self, request):
+#         products = await sync_to_async(list)(Product.objects.all())
+#         max_price = await sync_to_async(
+#             lambda: Product.objects.aggregate(max_price=Max("price"))["max_price"]
+#         )()
+#         serializer = ProductInfoSerializer(
+#             {"products": products, "count": len(products), "max_price": max_price}
+#         )
+#         return Response(serializer.data)
+
+
+# @api_view(["GET"])
+# def product_info(request):
+#     products = Product.objects.all()
+#     serializer = ProductInfoSerializer(
+#         {
+#             "products": products,
+#             "count": len(products),
+#             "max_price": products.aggregate(max_price=Max("price"))["max_price"],
+#         }
+#     )
+#     return Response(serializer.data)
+
+
+# @api_view(["GET"])
+# def product_list(request):
+#     products = Product.objects.all()
+#     serializer = ProductSerializer(products, many=True)
+#     return Response(serializer.data)
+
+# @api_view(["GET"])
+# def product_detail(request, pk):
+#     products = get_object_or_404(Product, pk=pk)
+#     serializer = ProductSerializer(products)
+#     return Response(serializer.data)
+
+# @api_view(["GET"])
+# def order_list(request):
+#     # orders = Order.objects.all()
+#     orders = Order.objects.prefetch_related("items", "items__product")
+#     serializer = OrderSerializer(orders, many=True)
+#     return Response(serializer.data)
 
 
 # class ProductListAPIView(generics.ListCreateAPIView):
@@ -58,42 +201,6 @@ from django.db.models import F, Sum
 #             self.permission_classes = [IsAdminUser]
 #         return super().get_permissions()
 
-## Load test
-@method_decorator(cache_page(60*5) , name='dispatch')
-class ProductListAPIView(generics.ListCreateAPIView):
-    serializer_class = ProductSerializer
-    filterset_class = ProductFilter
-    filter_backends = [
-        DjangoFilterBackend,
-        filters.SearchFilter,
-        filters.OrderingFilter,
-        InStockFilterBackend,
-    ]
-    search_fields = ["name", "description"]
-    ordering_fields = ["name", "price", "stock"]
-
-    pagination_class = LimitOffsetPagination
-
-    def get_queryset(self):
-        qs = Product.objects.only("id", "name", "price", "stock","description")
-        return qs.order_by("pk")
-
-    def get_permissions(self):
-        self.permission_classes = [AllowAny]
-        if self.request.method == "POST":
-            self.permission_classes = [IsAdminUser]
-        return super().get_permissions()
-
-
-# class ProductCreateAPIView(generics.CreateAPIView):
-#     model = Product
-#     serializer_class = ProductSerializer
-
-
-class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    lookup_url_kwarg = "product_id"
 
 # class OrderViewSet(viewsets.ModelViewSet):
 #     # throttle_scope  = 'orders'
@@ -132,32 +239,10 @@ class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 #     #     serializer = self.get_serializer(orders, many=True)
 #     #     return Response(serializer.data)
 
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.prefetch_related("items__product")
-    permission_classes = [IsAuthenticated]
-    filterset_class = OrderFilter
-    filter_backends = [DjangoFilterBackend]
 
-    def get_queryset(self):
-        qs = Order.objects.prefetch_related("items__product").annotate(
-            annotated_total=Sum(F("items__quantity") * F("items__product__price"))
-        )
-
-        if not self.request.user.is_staff:
-            qs = qs.filter(user=self.request.user)
-
-        return qs
-
-    def get_serializer_class(self):
-
-        if self.action == "create":
-            return OrderCreateSerializer
-        elif self.action == "list":
-            return OrderListSerializer  
-        return OrderSerializer  
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+# class ProductCreateAPIView(generics.CreateAPIView):
+#     model = Product
+#     serializer_class = ProductSerializer
 
 
 # class OrderListAPIView(generics.ListCreateAPIView):
@@ -165,58 +250,29 @@ class OrderViewSet(viewsets.ModelViewSet):
 #     serializer_class = OrderSerializer
 
 
-class UserOrderListAPIView(generics.ListCreateAPIView):
-    queryset = Order.objects.prefetch_related("items__product")
-    serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+# class ProductListAPIView(ListCreateAPIView):
+#     serializer_class = ProductSerializer
+#     filterset_class = ProductFilter
+#     filter_backends = [
+#         DjangoFilterBackend,
+#         filters.SearchFilter,
+#         filters.OrderingFilter,
+#         InStockFilterBackend,
+#     ]
+#     search_fields = ["name", "description"]
+#     ordering_fields = ["name", "price", "stock"]
 
-    # Get Orders for the logged in user
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.filter(user=self.request.user)
+#     pagination_class = LimitOffsetPagination
 
+#     async def get_queryset(self):
+#         return await sync_to_async(
+#             lambda: Product.objects.only(
+#                 "id", "name", "price", "stock", "description"
+#             ).order_by("pk")
+#         )()
 
-class ProductInfoAPIView(APIView):
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductInfoSerializer(
-            {
-                "products": products,
-                "count": len(products),
-                "max_price": products.aggregate(max_price=Max("price"))["max_price"],
-            }
-        )
-        return Response(serializer.data)
-
-
-# @api_view(["GET"])
-# def product_info(request):
-#     products = Product.objects.all()
-#     serializer = ProductInfoSerializer(
-#         {
-#             "products": products,
-#             "count": len(products),
-#             "max_price": products.aggregate(max_price=Max("price"))["max_price"],
-#         }
-#     )
-#     return Response(serializer.data)
-
-
-# @api_view(["GET"])
-# def product_list(request):
-#     products = Product.objects.all()
-#     serializer = ProductSerializer(products, many=True)
-#     return Response(serializer.data)
-
-# @api_view(["GET"])
-# def product_detail(request, pk):
-#     products = get_object_or_404(Product, pk=pk)
-#     serializer = ProductSerializer(products)
-#     return Response(serializer.data)
-
-# @api_view(["GET"])
-# def order_list(request):
-#     # orders = Order.objects.all()
-#     orders = Order.objects.prefetch_related("items", "items__product")
-#     serializer = OrderSerializer(orders, many=True)
-#     return Response(serializer.data)
+#     def get_permissions(self):
+#         self.permission_classes = [AllowAny]
+#         if self.request.method == "POST":
+#             self.permission_classes = [IsAdminUser]
+#         return super().get_permissions()
