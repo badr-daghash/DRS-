@@ -48,13 +48,13 @@ Content-Type: application/json
 ### 
 POST http://localhost:8000/order/ HTTP/1.1  
 Content-Type: application/json 
-Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5MzMyMDIwLCJpYXQiOjE3NjkzMzE3MjAsImp0aSI6ImRkZTMxY2IyZjUxNDQzODc5NWExOWFmMGNhZGFjY2E3IiwidXNlcl9pZCI6IjEifQ.NTiwPunM7I8lMedRqp-hPYz8S8_5yz0j9cYbVCp1ey4
+Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5OTgzNjc4LCJpYXQiOjE3Njk5ODMzNzgsImp0aSI6ImYxYWNjOTY3MzBlOTQwYjg5NzVhNGNmZDgwMjU2YmYwIiwidXNlcl9pZCI6IjEifQ.lRs4ehIbupjJ1cNqlPFHfAPQ0FYujybnUMyGbe98YEw
 
 {
    "status":"Pending" , 
    "user":1 , 
    "items":[
-    {"product":3 , "quantity":2},
-    {"product":5 , "quantity":2}
+    {"product":500 , "quantity":3},
+    {"product":612 , "quantity":2}
     ]
 }

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "silk",
     "drf_spectacular",
     "django_filters",
+    "adrf",
 ]
 
 MIDDLEWARE = [
