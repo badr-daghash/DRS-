@@ -78,12 +78,14 @@ class OrderAsyncViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend]
 
     def get_queryset(self):
-        qs = Order.objects.prefetch_related("items__product").annotate(
-            annotated_total=Sum(F("items__quantity") * F("items__product__price"))
-        )
-
+        qs = Order.objects.prefetch_related("items__product")
         if not self.request.user.is_staff:
             qs = qs.filter(user=self.request.user)
+
+        for order in qs:
+            order.annotated_total = sum(
+                item.quantity * item.product.price for item in order.items.all()
+        ) 
         return qs
 
     def get_serializer_class(self):
