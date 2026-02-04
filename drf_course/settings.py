@@ -19,6 +19,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.import_export",  # optional, if django-import-export package is used
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -32,6 +35,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_filters",
     "adrf",
+    "import_export",
 ]
 
 MIDDLEWARE = [
@@ -160,3 +164,8 @@ CACHES = {
         },
     }
 }
+
+
+
+UNFOLD={ 
+        "SITE_HEADER":"Unfold Demo!"}
